@@ -1,0 +1,92 @@
+.container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: twinkle 2s infinite alternate;
+}
+
+@keyframes twinkle {
+  0% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.3;
+  }
+}
+
+.titleWrapper {
+  margin-top: 20px;
+  text-align: center;
+  z-index: 10;
+}
+
+.title {
+  font-size: 3rem;
+  color: white;
+  font-weight: bold;
+}
+
+.divider {
+  width: 200px;
+  border: 0.5px solid white;
+  margin: 10px auto 0;
+}
+
+.navWrapper {
+  margin-top: 50px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 0 20px rgba(0, 120, 255, 0.8);
+  animation: glow 2s infinite alternate;
+  z-index: 10;
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 20px rgba(0, 120, 255, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(0, 120, 255, 0.8);
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(0, 120, 255, 0.4);
+  }
+}
+
+.toggle {
+  width: 250px;
+  height: 80px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 120, 255, 0.8);
+  border-radius: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.toggle:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 30px rgba(0, 120, 255, 1);
+}
+

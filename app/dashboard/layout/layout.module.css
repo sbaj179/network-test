@@ -1,0 +1,58 @@
+/* app/layout.module.css */
+.layoutWrapper {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  background: radial-gradient(circle at top, #0a0f2c, #090c1f);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Starfield layer (optional: you can animate stars here) */
+.layoutWrapper::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: url('/stars.png') repeat;
+  background-size: cover;
+  top: 0;
+  left: 0;
+  opacity: 0.3;
+  z-index: 0;
+}
+
+.titleWrapper {
+  width: 100%;
+  text-align: center;
+  padding: 2rem 0 1rem;
+  z-index: 1;
+}
+
+.title {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.divider {
+  height: 3px;
+  width: 80px;
+  background-color: #ffffffaa;
+  margin: 0.5rem auto 0;
+  border-radius: 2px;
+}
+
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  flex: 1;
+  z-index: 1;
+  padding: 2rem 1rem;
+}

@@ -1,0 +1,84 @@
+.reportContainer {
+  width: 95%;
+  margin: 2rem auto;
+  padding: 2rem;
+  background-color: var(--background); /* Dark/light mode aware */
+  color: var(--text);
+  border-radius: 1rem;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  font-family: 'Inter', sans-serif;
+}
+
+.reportTitle {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.divider {
+  height: 3px;
+  background-color: var(--primary);
+  width: 100%;
+  margin-bottom: 2rem;
+  border-radius: 2px;
+}
+
+.reportTable {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+}
+
+.subjectsColumn {
+  min-width: 200px;
+}
+
+.subjectItem {
+  padding: 1rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--divider);
+}
+
+.termColumn {
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  border-left: 2px solid var(--divider);
+  padding-left: 1rem;
+}
+
+.termTitle {
+  font-weight: 700;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.termItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+  background-color: var(--card);
+  border-radius: 0.5rem;
+}
+
+.commentSection {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: var(--card);
+  border-radius: 0.5rem;
+}
+
+.signatureSection {
+  margin-top: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.signatureLine {
+  flex-grow: 1;
+  height: 2px;
+  background-color: var(--text);
+}

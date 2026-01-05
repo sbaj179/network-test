@@ -1,0 +1,114 @@
+.pageWrapper {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: black;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.starfield {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.star {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  background: white;
+  border-radius: 50%;
+  opacity: calc(var(--random-opacity));
+  top: calc(var(--random-top) * 1%);
+  left: calc(var(--random-left) * 1%);
+  animation: twinkle 5s infinite alternate;
+}
+
+@keyframes twinkle {
+  0% { opacity: 0.2; transform: translateY(0px); }
+  50% { opacity: 1; transform: translateY(2px); }
+  100% { opacity: 0.2; transform: translateY(0px); }
+}
+
+/* Header with BackArrow and Title */
+.header {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 10px;
+}
+
+.title {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.separator {
+  width: 80%;
+  border: 0.5px solid white;
+  margin-top: 10px;
+}
+
+/* Chat area */
+.chatWrapper {
+  position: relative;
+  z-index: 5;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 20px;
+}
+
+.chatArea {
+  width: 90%;
+  flex: 1;
+  background: rgba(0,0,0,0.7);
+  border-radius: 15px;
+  padding: 20px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+/* Input area */
+.inputWrapper {
+  width: 90%;
+  display: flex;
+  gap: 10px;
+}
+
+.input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #00bfff;
+  background: rgba(0,0,0,0.8);
+  color: white;
+}
+
+.input::placeholder {
+  color: rgba(255,255,255,0.6);
+}
+
+.sendBtn {
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: none;
+  background-color: #00bfff;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.sendBtn:hover {
+  transform: scale(1.05);
+}

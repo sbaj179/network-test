@@ -1,0 +1,18 @@
+.backWrapper {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  font-size: 2rem;
+  color: white;
+  cursor: pointer;
+  z-index: 20; /* above stars and wrapper */
+  user-select: none;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.backWrapper:hover {
+  color: #00bfff; /* subtle blue glow on hover */
+  transform: scale(1.2);
+}
+
+

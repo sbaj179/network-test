@@ -1,0 +1,60 @@
+.loginPage {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #1a1a3f; /* Indigo blue-ish dark */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.star {
+  position: absolute;
+  background-color: white;
+  border-radius: 50%;
+}
+
+.formWrapper {
+  background: rgba(0, 0, 0, 0.7);
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0, 170, 255, 0.7);
+  min-width: 300px;
+  max-width: 400px;
+  width: 90%;
+  z-index: 2;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form input,
+.form select {
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #0af;
+  outline: none;
+  background-color: #111;
+  color: white;
+}
+
+.form button {
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  background-color: #0af;
+  color: black;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.form button:hover {
+  transform: scale(1.05);
+}
+
+
