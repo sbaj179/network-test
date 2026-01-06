@@ -1,16 +1,18 @@
 // lib/supabaseClient.ts
 import { createClient } from "@supabase/supabase-js";
 
-// Ensure these env variables are at project root and prefixed with NEXT_PUBLIC_
-// .env.local
-// NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
-// NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+// Use NEXT_PUBLIC_ prefixed env vars so they are available in client-side code
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
+// Instead of throwing at build time, fall back gracefully
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error("Supabase URL or ANON key is missing. Check .env.local");
+  console.warn("⚠️ Supabase environment variables are missing.");
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Export a client only if both vars exist
+export const supabase =
+  supabaseUrl && supabaseAnonKey
+    ? createClient(supabaseUrl, supabaseAnonKey)
+    : undefined;
+
