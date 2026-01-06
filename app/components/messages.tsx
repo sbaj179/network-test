@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import BackArrow from "../components/back-arrow/BackArrow";
 import { supabase } from "../../lib/supabaseClient";
+import { v4 as uuidv4 } from "uuid";
 
 interface MessagesProps {
   onBack: () => void;
@@ -19,7 +20,7 @@ interface User {
   id: string;
   platform_id: string;
   name: string;
-  role: string;
+  role: string; // "teacher" | "parent" | "student" | other
 }
 
 export default function Messages({ onBack }: MessagesProps) {
@@ -32,11 +33,8 @@ export default function Messages({ onBack }: MessagesProps) {
   // ================= CURRENT USER =================
   useEffect(() => {
     const id = localStorage.getItem("currentUserId");
-    if (!id) {
-      console.error("No currentUserId found");
-      return;
-    }
-    setCurrentUserId(id);
+    if (id) setCurrentUserId(id);
+    else console.error("No currentUserId found");
   }, []);
 
   // ================= USERS =================
@@ -56,7 +54,14 @@ export default function Messages({ onBack }: MessagesProps) {
         .select("*")
         .order("created_at", { ascending: true });
 
-      if (!error && data) setMessages(data as MessageRow[]);
+      if (!error && data) {
+        const safeMessages = (data as MessageRow[]).map((msg) => ({
+          ...msg,
+          id: msg.id || uuidv4(),
+          created_at: msg.created_at || new Date().toISOString(),
+        }));
+        setMessages(safeMessages);
+      }
     };
     fetchMessages();
   }, []);
@@ -69,7 +74,12 @@ export default function Messages({ onBack }: MessagesProps) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          setMessages((prev) => [...prev, payload.new as MessageRow]);
+          const newMsg: MessageRow = {
+            ...(payload.new as MessageRow),
+            id: (payload.new as MessageRow).id || uuidv4(),
+            created_at: (payload.new as MessageRow).created_at || new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, newMsg]);
         }
       )
       .subscribe();
@@ -79,21 +89,31 @@ export default function Messages({ onBack }: MessagesProps) {
     };
   }, []);
 
-  // ================= SEND =================
+  // ================= SEND MESSAGE =================
   const sendMessage = async () => {
     if (!input.trim() || !currentUserId) return;
 
-    const { error } = await supabase.from("messages").insert({
+    const newMessage: MessageRow = {
+      id: uuidv4(),
       text: input.trim(),
       sender_id: currentUserId,
-    });
+      created_at: new Date().toISOString(),
+    };
 
-    if (error) {
-      console.error("Error sending message:", error.message);
-      return;
-    }
-
+    // Optimistic UI
+    setMessages((prev) => [...prev, newMessage]);
     setInput("");
+
+    try {
+      const { error } = await supabase.from("messages").insert({
+        text: newMessage.text,
+        sender_id: newMessage.sender_id,
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error("Error sending message:", err.message);
+      alert("Failed to send message");
+    }
   };
 
   const getSender = (id: string) => users.find((u) => u.id === id);
@@ -103,7 +123,7 @@ export default function Messages({ onBack }: MessagesProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // ================= STARS =================
+  // ================= STARFIELD =================
   const [stars, setStars] = useState<{ x: number; y: number; size: number; opacity: number }[]>([]);
   useEffect(() => {
     const tempStars = Array.from({ length: 300 }, () => ({
@@ -127,6 +147,44 @@ export default function Messages({ onBack }: MessagesProps) {
     }, 50);
     return () => clearInterval(interval);
   }, []);
+
+  // ================= FORMAT TIME =================
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    const h = d.getHours();
+    const m = d.getMinutes();
+    const hh = h % 12 === 0 ? 12 : h % 12;
+    const mm = m < 10 ? `0${m}` : m;
+    const ampm = h >= 12 ? "PM" : "AM";
+    return `${hh}:${mm} ${ampm}`;
+  };
+
+  // ================= GET BUBBLE COLOR =================
+  const getBubbleColor = (role: string | undefined, isMe: boolean) => {
+    if (isMe) return "#0af"; // your messages
+    switch (role) {
+      case "teacher":
+        return "#4caf50"; // green
+      case "parent":
+        return "#fbc02d"; // gold/yellow
+      case "student":
+        return "#e91e63"; // pink/red
+      default:
+        return "#888"; // fallback grey
+    }
+  };
+
+  const getTextColor = (role: string | undefined, isMe: boolean) => {
+    if (isMe) return "black";
+    switch (role) {
+      case "teacher":
+      case "parent":
+      case "student":
+        return "black";
+      default:
+        return "white";
+    }
+  };
 
   return (
     <div style={{ height: "100vh", backgroundColor: "black", color: "white", display: "flex", flexDirection: "column", position: "relative" }}>
@@ -169,7 +227,7 @@ export default function Messages({ onBack }: MessagesProps) {
 
           return (
             <div
-              key={msg.id}
+              key={msg.id || uuidv4()} // fallback key in case id is missing
               style={{
                 alignSelf: isMe ? "flex-end" : "flex-start",
                 maxWidth: "75%",
@@ -184,14 +242,17 @@ export default function Messages({ onBack }: MessagesProps) {
               )}
               <div
                 style={{
-                  backgroundColor: isMe ? "#0af" : "#444",
-                  color: isMe ? "black" : "white",
+                  backgroundColor: getBubbleColor(sender?.role, isMe),
+                  color: getTextColor(sender?.role, isMe),
                   padding: "12px 16px",
                   borderRadius: "16px",
                 }}
               >
                 {msg.text}
               </div>
+              <span style={{ fontSize: "10px", opacity: 0.5, marginTop: "2px", alignSelf: "flex-end" }}>
+                {msg.created_at ? formatTime(msg.created_at) : ""}
+              </span>
             </div>
           );
         })}
@@ -215,5 +276,9 @@ export default function Messages({ onBack }: MessagesProps) {
     </div>
   );
 }
+
+
+
+
 
 

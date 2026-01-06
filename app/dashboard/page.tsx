@@ -14,7 +14,7 @@ export default function Dashboard() {
 
   // ================= STARS =================
   useEffect(() => {
-    const tempStars = Array.from({ length: 300 }, () => ({
+    const tempStars = Array.from({ length: 150 }, () => ({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
       size: Math.random() * 2 + 1,
