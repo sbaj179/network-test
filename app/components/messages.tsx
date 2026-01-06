@@ -20,7 +20,7 @@ interface User {
   id: string;
   platform_id: string;
   name: string;
-  role: string; // "teacher" | "parent" | "student" | other
+  role: string;
 }
 
 export default function Messages({ onBack }: MessagesProps) {
@@ -73,11 +73,11 @@ export default function Messages({ onBack }: MessagesProps) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
+        (payload: { new: MessageRow }) => {
           const newMsg: MessageRow = {
-            ...(payload.new as MessageRow),
-            id: (payload.new as MessageRow).id || uuidv4(),
-            created_at: (payload.new as MessageRow).created_at || new Date().toISOString(),
+            ...payload.new,
+            id: payload.new.id || uuidv4(),
+            created_at: payload.new.created_at || new Date().toISOString(),
           };
           setMessages((prev) => [...prev, newMsg]);
         }
@@ -124,31 +124,19 @@ export default function Messages({ onBack }: MessagesProps) {
   }, [messages]);
 
   // ================= STARFIELD =================
-  const [stars, setStars] = useState<{ x: number; y: number; size: number; opacity: number }[]>([]);
+  const starCount = 80;
+  const [stars, setStars] = useState<{ left: number; top: number; size: number; opacity: number; duration: number }[]>([]);
   useEffect(() => {
-    const tempStars = Array.from({ length: 300 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      size: Math.random() * 2 + 1,
+    const tempStars = Array.from({ length: starCount }, () => ({
+      left: Math.random() * 100, // vw
+      top: Math.random() * 100, // vh
+      size: Math.random() * 2 + 1, // px
       opacity: Math.random() * 0.5 + 0.5,
+      duration: Math.random() * 20 + 10, // seconds
     }));
     setStars(tempStars);
   }, []);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStars((prev) =>
-        prev.map((star) => ({
-          ...star,
-          x: (star.x + Math.random() * 0.3) % window.innerWidth,
-          y: (star.y + Math.random() * 0.3) % window.innerHeight,
-          opacity: Math.min(Math.max(star.opacity + (Math.random() - 0.5) * 0.05, 0.3), 1),
-        }))
-      );
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
 
-  // ================= FORMAT TIME =================
   const formatTime = (iso: string) => {
     const d = new Date(iso);
     const h = d.getHours();
@@ -159,18 +147,13 @@ export default function Messages({ onBack }: MessagesProps) {
     return `${hh}:${mm} ${ampm}`;
   };
 
-  // ================= GET BUBBLE COLOR =================
   const getBubbleColor = (role: string | undefined, isMe: boolean) => {
-    if (isMe) return "#0af"; // your messages
+    if (isMe) return "#0af";
     switch (role) {
-      case "teacher":
-        return "#4caf50"; // green
-      case "parent":
-        return "#fbc02d"; // gold/yellow
-      case "student":
-        return "#e91e63"; // pink/red
-      default:
-        return "#888"; // fallback grey
+      case "teacher": return "#4caf50";
+      case "parent": return "#fbc02d";
+      case "student": return "#e91e63";
+      default: return "#888";
     }
   };
 
@@ -190,21 +173,26 @@ export default function Messages({ onBack }: MessagesProps) {
     <div style={{ height: "100vh", backgroundColor: "black", color: "white", display: "flex", flexDirection: "column", position: "relative" }}>
       {/* Starfield */}
       {stars.map((star, i) => (
-        <div
-          key={i}
-          style={{
-            position: "absolute",
-            left: star.x,
-            top: star.y,
-            width: star.size,
-            height: star.size,
-            borderRadius: "50%",
-            backgroundColor: "white",
-            opacity: star.opacity,
-            pointerEvents: "none",
-          }}
-        />
+        <div key={i} style={{
+          position: "absolute",
+          left: `${star.left}vw`,
+          top: `${star.top}vh`,
+          width: `${star.size}px`,
+          height: `${star.size}px`,
+          borderRadius: "50%",
+          backgroundColor: "white",
+          opacity: star.opacity,
+          pointerEvents: "none",
+          animation: `twinkle ${star.duration}s infinite alternate`,
+        }} />
       ))}
+
+      <style>{`
+        @keyframes twinkle {
+          from { opacity: 0.3; transform: translateY(0px); }
+          to { opacity: 1; transform: translateY(1.5px); }
+        }
+      `}</style>
 
       {/* Back Arrow */}
       <div style={{ position: "absolute", top: "20px", left: "20px", zIndex: 10 }}>
@@ -226,28 +214,23 @@ export default function Messages({ onBack }: MessagesProps) {
           const isMe = msg.sender_id === currentUserId;
 
           return (
-            <div
-              key={msg.id || uuidv4()} // fallback key in case id is missing
-              style={{
-                alignSelf: isMe ? "flex-end" : "flex-start",
-                maxWidth: "75%",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
+            <div key={msg.id || uuidv4()} style={{
+              alignSelf: isMe ? "flex-end" : "flex-start",
+              maxWidth: "75%",
+              display: "flex",
+              flexDirection: "column",
+            }}>
               {sender && (
                 <span style={{ fontSize: "12px", opacity: 0.7 }}>
                   {sender.name} ({sender.role})
                 </span>
               )}
-              <div
-                style={{
-                  backgroundColor: getBubbleColor(sender?.role, isMe),
-                  color: getTextColor(sender?.role, isMe),
-                  padding: "12px 16px",
-                  borderRadius: "16px",
-                }}
-              >
+              <div style={{
+                backgroundColor: getBubbleColor(sender?.role, isMe),
+                color: getTextColor(sender?.role, isMe),
+                padding: "12px 16px",
+                borderRadius: "16px",
+              }}>
                 {msg.text}
               </div>
               <span style={{ fontSize: "10px", opacity: 0.5, marginTop: "2px", alignSelf: "flex-end" }}>
@@ -256,7 +239,6 @@ export default function Messages({ onBack }: MessagesProps) {
             </div>
           );
         })}
-
         <div ref={messagesEndRef} />
       </div>
 
@@ -276,6 +258,7 @@ export default function Messages({ onBack }: MessagesProps) {
     </div>
   );
 }
+
 
 
 

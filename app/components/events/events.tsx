@@ -12,10 +12,10 @@ export default function Events({ onBack }: EventsProps) {
     { name: "Maths", time: "08:00 - 08:50" },
     { name: "Accounting", time: "08:50 - 09:40" },
     { name: "Life Sciences", time: "09:40 - 10:30" },
-    { name: "Physical Sciences", time: "10:40 - 11:30" }, // after 10 min break
+    { name: "Physical Sciences", time: "10:40 - 11:30" },
     { name: "IsiXhosa", time: "11:30 - 12:20" },
-    { name: "English", time: "13:05 - 13:55" }, // after 45 min break
-    { name: "Rugby Match", time: "13:55 - 14:15" }, // short last period
+    { name: "English", time: "13:05 - 13:55" },
+    { name: "Rugby Match", time: "13:55 - 14:15" },
   ];
 
   const eventNotes: Record<string, string> = {
@@ -31,26 +31,25 @@ export default function Events({ onBack }: EventsProps) {
 
   // Starfield background
   useEffect(() => {
-    const tempStars = Array.from({ length: 300 }, () => ({
+    const tempStars = Array.from({ length: 150 }, () => ({
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
       size: Math.random() * 2 + 1,
       opacity: Math.random() * 0.5 + 0.5,
     }));
     setStars(tempStars);
-  }, []);
 
-  useEffect(() => {
     const interval = setInterval(() => {
-      setStars((prev) =>
-        prev.map((star) => ({
+      setStars(prev =>
+        prev.map(star => ({
           ...star,
-          x: (star.x + Math.random() * 0.3) % window.innerWidth,
-          y: (star.y + Math.random() * 0.3) % window.innerHeight,
-          opacity: Math.min(Math.max(star.opacity + (Math.random() - 0.5) * 0.05, 0.3), 1),
+          x: (star.x + Math.random() * 0.2) % window.innerWidth,
+          y: (star.y + Math.random() * 0.2) % window.innerHeight,
+          opacity: Math.min(Math.max(star.opacity + (Math.random() - 0.5) * 0.03, 0.3), 1),
         }))
       );
     }, 50);
+
     return () => clearInterval(interval);
   }, []);
 
@@ -93,7 +92,7 @@ export default function Events({ onBack }: EventsProps) {
             justifyContent: "center",
           }}
         >
-          {days.map((day) => (
+          {days.map(day => (
             <button
               key={day}
               onClick={() => setSelectedDay(day)}
@@ -113,7 +112,7 @@ export default function Events({ onBack }: EventsProps) {
 
         {/* Periods */}
         <div style={{ marginBottom: "20px", maxWidth: "500px", marginLeft: "auto", marginRight: "auto" }}>
-          {periods.map((period) => (
+          {periods.map(period => (
             <div
               key={period.name}
               style={{
@@ -140,6 +139,7 @@ export default function Events({ onBack }: EventsProps) {
     </div>
   );
 }
+
 
 
 
