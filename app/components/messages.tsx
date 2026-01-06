@@ -68,8 +68,8 @@ export default function Messages({ onBack }: MessagesProps) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
-        payload => {
-          setMessages(prev => [...prev, payload.new as MessageRow]);
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new as MessageRow]);
         }
       )
       .subscribe();
@@ -91,7 +91,7 @@ export default function Messages({ onBack }: MessagesProps) {
     if (!error) setInput("");
   };
 
-  const getSender = (id: string) => users.find(u => u.id === id);
+  const getSender = (id: string) => users.find((u) => u.id === id);
 
   // ================= AUTOSCROLL =================
   useEffect(() => {
@@ -99,20 +99,43 @@ export default function Messages({ onBack }: MessagesProps) {
   }, [messages]);
 
   return (
-    <div style={{ height: "100vh", backgroundColor: "black", color: "white", display: "flex", flexDirection: "column" }}>
-      <BackArrow onBack={onBack} />
+    <div
+      style={{
+        height: "100vh",
+        backgroundColor: "black",
+        color: "white",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+      }}
+    >
+      {/* BackArrow fixed at top-left */}
+      <div style={{ position: "absolute", top: 15, left: 15, zIndex: 10 }}>
+        <BackArrow onBack={onBack} />
+      </div>
 
-      <div style={{ padding: "20px", paddingTop: "50px", textAlign: "center" }}>
+      {/* Header */}
+      <div style={{ padding: "20px", textAlign: "center", marginTop: "50px" }}>
         <h2 style={{ margin: 0, fontWeight: 700 }}>Accountability Chat</h2>
         <div style={{ height: "1px", backgroundColor: "#333", marginTop: "12px" }} />
       </div>
 
-      <div style={{ flex: 1, padding: "20px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
+      {/* Messages */}
+      <div
+        style={{
+          flex: 1,
+          padding: "20px",
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+        }}
+      >
         {messages.length === 0 && (
           <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>
         )}
 
-        {messages.map(msg => {
+        {messages.map((msg) => {
           const sender = getSender(msg.sender_id);
           const isMe = msg.sender_id === currentUserId;
 
@@ -144,15 +167,23 @@ export default function Messages({ onBack }: MessagesProps) {
             </div>
           );
         })}
-
         <div ref={messagesEndRef} />
       </div>
 
-      <div style={{ padding: "15px", borderTop: "1px solid #222", display: "flex", gap: "10px" }}>
+      {/* Input */}
+      <div
+        style={{
+          padding: "15px",
+          borderTop: "1px solid #222",
+          display: "flex",
+          gap: "10px",
+          backgroundColor: "#050505",
+        }}
+      >
         <input
           value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && sendMessage()}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Type a message..."
           style={{
             flex: 1,

@@ -1,6 +1,4 @@
 "use client";
-export const dynamic = "force-dynamic";
-
 
 import React, { useEffect, useState } from "react";
 import Messages from "../components/messages";
@@ -12,28 +10,9 @@ type Section = "home" | "messages" | "events" | "reports";
 
 export default function Dashboard() {
   const [activeSection, setActiveSection] = useState<Section>("home");
+  const [stars, setStars] = useState<{ x: number; y: number; size: number; opacity: number }[]>([]);
 
-  const [checkingAuth, setCheckingAuth] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
-
-  const [stars, setStars] = useState<
-    { x: number; y: number; size: number; opacity: number }[]
-  >([]);
-
-  // ---------- AUTH GATE ----------
-  useEffect(() => {
-    const userId = localStorage.getItem("currentUserId");
-
-    if (!userId) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setAuthorized(true);
-    setCheckingAuth(false);
-  }, []);
-
-  // ---------- STARFIELD ----------
+  // ================= STARS =================
   useEffect(() => {
     const tempStars = Array.from({ length: 300 }, () => ({
       x: Math.random() * window.innerWidth,
@@ -42,19 +21,14 @@ export default function Dashboard() {
       opacity: Math.random() * 0.5 + 0.5,
     }));
     setStars(tempStars);
-  }, []);
 
-  useEffect(() => {
     const interval = setInterval(() => {
       setStars((prev) =>
         prev.map((star) => ({
           ...star,
           x: (star.x + Math.random() * 0.3) % window.innerWidth,
           y: (star.y + Math.random() * 0.3) % window.innerHeight,
-          opacity: Math.min(
-            Math.max(star.opacity + (Math.random() - 0.5) * 0.05, 0.3),
-            1
-          ),
+          opacity: Math.min(Math.max(star.opacity + (Math.random() - 0.5) * 0.05, 0.3), 1),
         }))
       );
     }, 50);
@@ -62,29 +36,7 @@ export default function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // ---------- LOADING STATE ----------
-  if (checkingAuth) {
-    return (
-      <div
-        style={{
-          height: "100vh",
-          background: "black",
-          color: "white",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        Checking authentication...
-      </div>
-    );
-  }
-
-  if (!authorized) {
-    return null;
-  }
-
-  // ---------- SECTION RENDER ----------
+  // ================= RENDER SECTIONS =================
   const renderSection = () => {
     switch (activeSection) {
       case "messages":
@@ -98,7 +50,6 @@ export default function Dashboard() {
     }
   };
 
-  // ---------- UI ----------
   return (
     <div className={styles.dashboard}>
       {/* Starfield */}
@@ -122,25 +73,16 @@ export default function Dashboard() {
         <div className={styles.divider}></div>
       </div>
 
-      {/* Navigation */}
+      {/* Home Navigation */}
       {activeSection === "home" && (
         <div className={styles.navWrapper}>
-          <button
-            onClick={() => setActiveSection("messages")}
-            className={styles.toggle}
-          >
+          <button onClick={() => setActiveSection("messages")} className={styles.toggle}>
             Messages
           </button>
-          <button
-            onClick={() => setActiveSection("events")}
-            className={styles.toggle}
-          >
+          <button onClick={() => setActiveSection("events")} className={styles.toggle}>
             Events
           </button>
-          <button
-            onClick={() => setActiveSection("reports")}
-            className={styles.toggle}
-          >
+          <button onClick={() => setActiveSection("reports")} className={styles.toggle}>
             Reports
           </button>
         </div>
