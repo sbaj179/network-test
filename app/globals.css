@@ -25,6 +25,19 @@ html, body {
   0% { transform: translate(0,0); opacity: 0.5; }
   50% { opacity: 1; }
   100% { transform: translate(50px, 50px); opacity: 0.5; }
+
+  root {
+  --font-geist-sans: 'Geist', sans-serif;
+  --font-geist-mono: 'Geist Mono', monospace;
+}
+
+body {
+  font-family: var(--font-geist-sans);
+}
+code, pre {
+  font-family: var(--font-geist-mono);
+}
+
 }
 
 
