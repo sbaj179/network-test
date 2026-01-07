@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import BackArrow from "../components/back-arrow/BackArrow";
 import { supabase } from "../../lib/supabaseClient";
+import { v4 as uuidv4 } from "uuid";
 
 interface MessagesProps {
   onBack: () => void;
@@ -10,6 +11,7 @@ interface MessagesProps {
 
 interface MessageRow {
   id: string;
+  client_id?: string;
   text: string;
   sender_id: string;
   created_at?: string;
@@ -33,14 +35,13 @@ export default function Messages({ onBack }: MessagesProps) {
   useEffect(() => {
     const id = localStorage.getItem("currentUserId");
     if (id) setCurrentUserId(id);
-    else console.error("No currentUserId found");
   }, []);
 
   // ================= USERS =================
   useEffect(() => {
     const fetchUsers = async () => {
-      const { data, error } = await supabase.from("users").select("*");
-      if (!error && data) setUsers(data as User[]);
+      const { data } = await supabase.from("users").select("*");
+      if (data) setUsers(data as User[]);
     };
     fetchUsers();
   }, []);
@@ -48,19 +49,17 @@ export default function Messages({ onBack }: MessagesProps) {
   // ================= INITIAL MESSAGES =================
   useEffect(() => {
     const fetchMessages = async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("messages")
         .select("*")
         .order("created_at", { ascending: true });
 
-      if (!error && data) {
-        setMessages(data as MessageRow[]);
-      }
+      if (data) setMessages(data as MessageRow[]);
     };
     fetchMessages();
   }, []);
 
-  // ================= REALTIME (SINGLE SOURCE OF TRUTH) =================
+  // ================= REALTIME =================
   useEffect(() => {
     const channel = supabase
       .channel("messages-realtime")
@@ -68,11 +67,19 @@ export default function Messages({ onBack }: MessagesProps) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          const newMsg = payload.new as MessageRow;
+          const incoming = payload.new as MessageRow;
 
           setMessages((prev) => {
-            if (prev.some((m) => m.id === newMsg.id)) return prev;
-            return [...prev, newMsg];
+            if (
+              prev.some(
+                (m) =>
+                  m.id === incoming.id ||
+                  (m.client_id && m.client_id === incoming.client_id)
+              )
+            ) {
+              return prev;
+            }
+            return [...prev, incoming];
           });
         }
       )
@@ -87,19 +94,25 @@ export default function Messages({ onBack }: MessagesProps) {
   const sendMessage = async () => {
     if (!input.trim() || !currentUserId) return;
 
-    const messageText = input.trim();
+    const clientId = crypto.randomUUID();
+
+    const optimisticMessage: MessageRow = {
+      id: clientId,
+      client_id: clientId,
+      text: input.trim(),
+      sender_id: currentUserId,
+      created_at: new Date().toISOString(),
+    };
+
+    // ✅ WhatsApp-style instant UI
+    setMessages((prev) => [...prev, optimisticMessage]);
     setInput("");
 
-    try {
-      const { error } = await supabase.from("messages").insert({
-        text: messageText,
-        sender_id: currentUserId,
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      console.error("Error sending message:", err.message);
-      alert("Failed to send message");
-    }
+    await supabase.from("messages").insert({
+      text: optimisticMessage.text,
+      sender_id: optimisticMessage.sender_id,
+      client_id: clientId,
+    });
   };
 
   const getSender = (id: string) => users.find((u) => u.id === id);
@@ -116,14 +129,15 @@ export default function Messages({ onBack }: MessagesProps) {
   >([]);
 
   useEffect(() => {
-    const tempStars = Array.from({ length: starCount }, () => ({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      size: Math.random() * 2 + 1,
-      opacity: Math.random() * 0.5 + 0.5,
-      duration: Math.random() * 20 + 10,
-    }));
-    setStars(tempStars);
+    setStars(
+      Array.from({ length: starCount }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        size: Math.random() * 2 + 1,
+        opacity: Math.random() * 0.5 + 0.5,
+        duration: Math.random() * 20 + 10,
+      }))
+    );
   }, []);
 
   const formatTime = (iso?: string) => {
@@ -131,151 +145,86 @@ export default function Messages({ onBack }: MessagesProps) {
     const d = new Date(iso);
     const h = d.getHours();
     const m = d.getMinutes();
-    const hh = h % 12 === 0 ? 12 : h % 12;
+    const hh = h % 12 || 12;
     const mm = m < 10 ? `0${m}` : m;
-    const ampm = h >= 12 ? "PM" : "AM";
-    return `${hh}:${mm} ${ampm}`;
+    return `${hh}:${mm} ${h >= 12 ? "PM" : "AM"}`;
   };
 
-  const getBubbleColor = (role: string | undefined, isMe: boolean) => {
+  const getBubbleColor = (role?: string, isMe?: boolean) => {
     if (isMe) return "#0af";
-    switch (role) {
-      case "teacher":
-        return "#4caf50";
-      case "parent":
-        return "#fbc02d";
-      case "student":
-        return "#e91e63";
-      default:
-        return "#888";
-    }
-  };
-
-  const getTextColor = (role: string | undefined, isMe: boolean) => {
-    if (isMe) return "black";
-    return "black";
+    if (role === "teacher") return "#4caf50";
+    if (role === "parent") return "#fbc02d";
+    if (role === "student") return "#e91e63";
+    return "#888";
   };
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        backgroundColor: "black",
-        color: "white",
-        display: "flex",
-        flexDirection: "column",
-        position: "relative",
-      }}
-    >
-      {/* Starfield */}
-      {stars.map((star, i) => (
+    <div style={{ height: "100vh", background: "black", color: "white", display: "flex", flexDirection: "column", position: "relative" }}>
+      {stars.map((s, i) => (
         <div
           key={i}
           style={{
             position: "absolute",
-            left: `${star.left}vw`,
-            top: `${star.top}vh`,
-            width: `${star.size}px`,
-            height: `${star.size}px`,
+            left: `${s.left}vw`,
+            top: `${s.top}vh`,
+            width: s.size,
+            height: s.size,
             borderRadius: "50%",
-            backgroundColor: "white",
-            opacity: star.opacity,
+            background: "white",
+            opacity: s.opacity,
+            animation: `twinkle ${s.duration}s infinite alternate`,
             pointerEvents: "none",
-            animation: `twinkle ${star.duration}s infinite alternate`,
           }}
         />
       ))}
 
       <style>{`
         @keyframes twinkle {
-          from { opacity: 0.3; transform: translateY(0px); }
-          to { opacity: 1; transform: translateY(1.5px); }
+          from { opacity: 0.3; }
+          to { opacity: 1; }
         }
       `}</style>
 
-      {/* Back Arrow */}
-      <div style={{ position: "absolute", top: "20px", left: "20px", zIndex: 10 }}>
+      <div style={{ position: "absolute", top: 20, left: 20, zIndex: 10 }}>
         <BackArrow onBack={onBack} />
       </div>
 
-      {/* Title */}
-      <div style={{ padding: "20px", paddingTop: "70px", textAlign: "center", zIndex: 1 }}>
-        <h2 style={{ margin: 0, fontWeight: 700 }}>Accountability Chat</h2>
-        <div style={{ height: "1px", backgroundColor: "#333", marginTop: "12px" }} />
+      <div style={{ paddingTop: 70, textAlign: "center" }}>
+        <h2>Accountability Chat</h2>
       </div>
 
-      {/* Messages */}
-      <div
-        style={{
-          flex: 1,
-          padding: "20px",
-          overflowY: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "10px",
-          zIndex: 1,
-        }}
-      >
-        {messages.length === 0 && (
-          <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>
-        )}
-
+      <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
         {messages.map((msg) => {
           const sender = getSender(msg.sender_id);
           const isMe = msg.sender_id === currentUserId;
 
           return (
-            <div
-              key={msg.id}
-              style={{
-                alignSelf: isMe ? "flex-end" : "flex-start",
-                maxWidth: "75%",
-                display: "flex",
-                flexDirection: "column",
-              }}
-            >
+            <div key={msg.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "75%" }}>
               {sender && (
-                <span style={{ fontSize: "12px", opacity: 0.7 }}>
+                <div style={{ fontSize: 12, opacity: 0.7 }}>
                   {sender.name} ({sender.role})
-                </span>
+                </div>
               )}
               <div
                 style={{
-                  backgroundColor: getBubbleColor(sender?.role, isMe),
-                  color: getTextColor(sender?.role, isMe),
+                  background: getBubbleColor(sender?.role, isMe),
+                  color: "black",
                   padding: "12px 16px",
-                  borderRadius: "16px",
+                  borderRadius: 16,
                 }}
               >
                 {msg.text}
               </div>
-              <span
-                style={{
-                  fontSize: "10px",
-                  opacity: 0.5,
-                  marginTop: "2px",
-                  alignSelf: "flex-end",
-                }}
-              >
+              <div style={{ fontSize: 10, opacity: 0.5, textAlign: "right" }}>
                 {formatTime(msg.created_at)}
-              </span>
+              </div>
             </div>
           );
         })}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div
-        style={{
-          padding: "15px",
-          borderTop: "1px solid #222",
-          display: "flex",
-          gap: "10px",
-          backgroundColor: "#050505",
-          zIndex: 1,
-        }}
-      >
+      <div style={{ padding: 15, borderTop: "1px solid #222", display: "flex", gap: 10 }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -283,19 +232,19 @@ export default function Messages({ onBack }: MessagesProps) {
           placeholder="Type a message..."
           style={{
             flex: 1,
-            padding: "14px",
-            backgroundColor: "#111",
+            padding: 14,
+            background: "#111",
             color: "white",
             border: "1px solid #0af",
-            borderRadius: "20px",
+            borderRadius: 20,
           }}
         />
         <button
           onClick={sendMessage}
           style={{
             padding: "14px 20px",
-            backgroundColor: "#0af",
-            borderRadius: "20px",
+            background: "#0af",
+            borderRadius: 20,
             fontWeight: 600,
           }}
         >
