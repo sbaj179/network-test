@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import BackArrow from "../components/back-arrow/BackArrow";
 import { supabase } from "../../lib/supabaseClient";
-import { v4 as uuidv4 } from "uuid";
 
 interface MessagesProps {
   onBack: () => void;
@@ -20,7 +19,7 @@ interface User {
   id: string;
   platform_id: string;
   name: string;
-  role: string; // teacher | parent | student | other
+  role: string;
 }
 
 export default function Messages({ onBack }: MessagesProps) {
@@ -46,26 +45,22 @@ export default function Messages({ onBack }: MessagesProps) {
     fetchUsers();
   }, []);
 
-  // ================= MESSAGES =================
+  // ================= INITIAL MESSAGES =================
   useEffect(() => {
     const fetchMessages = async () => {
       const { data, error } = await supabase
         .from("messages")
         .select("*")
         .order("created_at", { ascending: true });
+
       if (!error && data) {
-        const safeMessages = (data as MessageRow[]).map((msg) => ({
-          ...msg,
-          id: msg.id || uuidv4(),
-          created_at: msg.created_at || new Date().toISOString(),
-        }));
-        setMessages(safeMessages);
+        setMessages(data as MessageRow[]);
       }
     };
     fetchMessages();
   }, []);
 
-  // ================= REALTIME =================
+  // ================= REALTIME (SINGLE SOURCE OF TRUTH) =================
   useEffect(() => {
     const channel = supabase
       .channel("messages-realtime")
@@ -73,15 +68,10 @@ export default function Messages({ onBack }: MessagesProps) {
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
         (payload) => {
-          const newMsg: MessageRow = {
-            ...(payload.new as MessageRow),
-            id: (payload.new as MessageRow).id || uuidv4(),
-            created_at:
-              (payload.new as MessageRow).created_at ||
-              new Date().toISOString(),
-          };
+          const newMsg = payload.new as MessageRow;
+
           setMessages((prev) => {
-            if (prev.some((m) => m.id === newMsg.id)) return prev; // prevent duplicates
+            if (prev.some((m) => m.id === newMsg.id)) return prev;
             return [...prev, newMsg];
           });
         }
@@ -89,7 +79,7 @@ export default function Messages({ onBack }: MessagesProps) {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel); // fixed deprecated removeSubscription
+      supabase.removeChannel(channel);
     };
   }, []);
 
@@ -97,21 +87,13 @@ export default function Messages({ onBack }: MessagesProps) {
   const sendMessage = async () => {
     if (!input.trim() || !currentUserId) return;
 
-    const newMessage: MessageRow = {
-      id: uuidv4(),
-      text: input.trim(),
-      sender_id: currentUserId,
-      created_at: new Date().toISOString(),
-    };
-
-    // Optimistic UI
-    setMessages((prev) => [...prev, newMessage]);
+    const messageText = input.trim();
     setInput("");
 
     try {
       const { error } = await supabase.from("messages").insert({
-        text: newMessage.text,
-        sender_id: newMessage.sender_id,
+        text: messageText,
+        sender_id: currentUserId,
       });
       if (error) throw error;
     } catch (err: any) {
@@ -128,7 +110,7 @@ export default function Messages({ onBack }: MessagesProps) {
   }, [messages]);
 
   // ================= STARFIELD =================
-  const starCount = 80; // optimized to prevent lag
+  const starCount = 80;
   const [stars, setStars] = useState<
     { left: number; top: number; size: number; opacity: number; duration: number }[]
   >([]);
@@ -144,7 +126,8 @@ export default function Messages({ onBack }: MessagesProps) {
     setStars(tempStars);
   }, []);
 
-  const formatTime = (iso: string) => {
+  const formatTime = (iso?: string) => {
+    if (!iso) return "";
     const d = new Date(iso);
     const h = d.getHours();
     const m = d.getMinutes();
@@ -170,14 +153,7 @@ export default function Messages({ onBack }: MessagesProps) {
 
   const getTextColor = (role: string | undefined, isMe: boolean) => {
     if (isMe) return "black";
-    switch (role) {
-      case "teacher":
-      case "parent":
-      case "student":
-        return "black";
-      default:
-        return "white";
-    }
+    return "black";
   };
 
   return (
@@ -240,7 +216,9 @@ export default function Messages({ onBack }: MessagesProps) {
           zIndex: 1,
         }}
       >
-        {messages.length === 0 && <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>}
+        {messages.length === 0 && (
+          <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>
+        )}
 
         {messages.map((msg) => {
           const sender = getSender(msg.sender_id);
@@ -272,9 +250,14 @@ export default function Messages({ onBack }: MessagesProps) {
                 {msg.text}
               </div>
               <span
-                style={{ fontSize: "10px", opacity: 0.5, marginTop: "2px", alignSelf: "flex-end" }}
+                style={{
+                  fontSize: "10px",
+                  opacity: 0.5,
+                  marginTop: "2px",
+                  alignSelf: "flex-end",
+                }}
               >
-                {msg.created_at ? formatTime(msg.created_at) : ""}
+                {formatTime(msg.created_at)}
               </span>
             </div>
           );
@@ -309,7 +292,12 @@ export default function Messages({ onBack }: MessagesProps) {
         />
         <button
           onClick={sendMessage}
-          style={{ padding: "14px 20px", backgroundColor: "#0af", borderRadius: "20px", fontWeight: 600 }}
+          style={{
+            padding: "14px 20px",
+            backgroundColor: "#0af",
+            borderRadius: "20px",
+            fontWeight: 600,
+          }}
         >
           Send
         </button>
