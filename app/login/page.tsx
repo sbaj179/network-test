@@ -15,136 +15,126 @@ interface User {
 
 export default function LoginPage() {
   const router = useRouter();
+
   const [email, setEmail] = useState("");
   const [platformId, setPlatformId] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("");
   const [loading, setLoading] = useState(false);
-  const [stars, setStars] = useState<
-    { x: number; y: number; size: number; opacity: number }[]
-  >([]);
-
-  // ================= STARS INIT =================
-  useEffect(() => {
-    const tempStars = Array.from({ length: 300 }, () => ({
-      x: Math.random() * window.innerWidth,
-      y: Math.random() * window.innerHeight,
-      size: Math.random() * 2 + 1,
-      opacity: Math.random() * 0.5 + 0.5,
-    }));
-    setStars(tempStars);
-  }, []);
-
-  // ================= STARS ANIMATE =================
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStars((prev) =>
-        prev.map((star) => ({
-          ...star,
-          x: (star.x + Math.random() * 0.3) % window.innerWidth,
-          y: (star.y + Math.random() * 0.3) % window.innerHeight,
-          opacity: Math.min(
-            Math.max(star.opacity + (Math.random() - 0.5) * 0.05, 0.3),
-            1
-          ),
-        }))
-      );
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
+  const [shake, setShake] = useState(false);
 
   // ================= LOGIN =================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !platformId || !password) {
-      alert("Fill all fields");
+
+    if (!email || !platformId || !password || !role) {
+      triggerShake();
       return;
     }
+
     setLoading(true);
 
-    try {
-      // Check users table for all three fields
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", email.trim())
-        .eq("platform_id", platformId.trim())
-        .eq("password", password)
-        .single();
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email.trim())
+      .eq("platform_id", platformId.trim())
+      .eq("password", password)
+      .eq("role", role)
+      .single();
 
-      if (userError || !userData) {
-        alert("Invalid email, platform ID, or password");
-        setLoading(false);
-        return;
-      }
-
-      const user = userData as User;
-
-      // ================= SAVE SESSION =================
-      localStorage.setItem("currentUserId", user.id);
-      localStorage.setItem("currentUserRole", user.role);
-      localStorage.setItem("currentUserPlatformId", user.platform_id);
-      localStorage.setItem("currentUserName", user.name);
-      localStorage.setItem("currentUserEmail", user.email);
-
-      router.push("/dashboard");
-    } catch (err) {
-      console.error(err);
-      alert("Login failed. Try again.");
-    } finally {
+    if (error || !data) {
+      triggerShake();
       setLoading(false);
+      return;
     }
+
+    const user = data as User;
+
+    localStorage.setItem("currentUserId", user.id);
+    localStorage.setItem("currentUserRole", user.role);
+    localStorage.setItem("currentUserPlatformId", user.platform_id);
+    localStorage.setItem("currentUserName", user.name);
+    localStorage.setItem("currentUserEmail", user.email);
+
+    router.push("/dashboard");
   };
+
+  const triggerShake = () => {
+    setShake(true);
+    setTimeout(() => setShake(false), 450);
+  };
+
+  // ================= STARFIELD (CSS ONLY) =================
+  const starCount = 90;
+  const stars = Array.from({ length: starCount });
 
   return (
     <div
       style={{
-        width: "100vw",
         minHeight: "100vh",
-        backgroundColor: "#1a1a3d",
+        width: "100vw",
+        background:
+          "radial-gradient(circle at top, #1a1a5d 0%, #0a0a2a 45%, #000 100%)",
         position: "relative",
         overflow: "hidden",
         display: "flex",
-        justifyContent: "center",
         alignItems: "center",
+        justifyContent: "center",
         padding: "20px",
       }}
     >
       {/* Starfield */}
-      {stars.map((star, i) => (
+      {stars.map((_, i) => (
         <div
           key={i}
           style={{
             position: "absolute",
-            left: star.x,
-            top: star.y,
-            width: star.size,
-            height: star.size,
+            left: `${Math.random() * 100}vw`,
+            top: `${Math.random() * 100}vh`,
+            width: Math.random() * 2 + 1,
+            height: Math.random() * 2 + 1,
             borderRadius: "50%",
-            backgroundColor: "white",
-            opacity: star.opacity,
+            background: "white",
+            opacity: Math.random() * 0.5 + 0.3,
+            animation: `twinkle ${Math.random() * 20 + 10}s infinite alternate`,
             pointerEvents: "none",
           }}
         />
       ))}
 
-      {/* Login Form */}
+      {/* Login Card */}
       <form
         onSubmit={handleSubmit}
+        className={shake ? "shake" : ""}
         style={{
           width: "100%",
-          maxWidth: "380px",
-          backgroundColor: "rgba(0,0,0,0.85)",
-          padding: "40px",
-          borderRadius: "12px",
-          boxShadow: "0 0 30px rgba(0, 170, 255, 0.7)",
+          maxWidth: "420px",
+          backgroundColor: "#000",
+          padding: "42px",
+          borderRadius: "18px",
+          border: "1px solid rgba(0,170,255,0.35)",
+          boxShadow:
+            "0 0 40px rgba(0,170,255,0.6), inset 0 0 60px rgba(0,170,255,0.35)",
+          animation: "breathing 2.8s ease-in-out infinite",
           display: "flex",
           flexDirection: "column",
-          gap: "20px",
+          gap: "18px",
+          zIndex: 2,
         }}
       >
-        <h2 style={{ color: "white", textAlign: "center", marginBottom: "10px" }}>
-          Login
-        </h2>
+        <h1
+          style={{
+            color: "#0af",
+            textAlign: "center",
+            fontSize: "28px",
+            fontWeight: 700,
+            letterSpacing: "1px",
+            marginBottom: "6px",
+          }}
+        >
+          School-Connect
+        </h1>
 
         <input
           type="email"
@@ -152,7 +142,6 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           style={inputStyle}
-          required
         />
 
         <input
@@ -161,7 +150,6 @@ export default function LoginPage() {
           value={platformId}
           onChange={(e) => setPlatformId(e.target.value)}
           style={inputStyle}
-          required
         />
 
         <input
@@ -170,38 +158,83 @@ export default function LoginPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           style={inputStyle}
-          required
         />
+
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          style={inputStyle}
+        >
+          <option value="" disabled hidden>
+            Select Role
+          </option>
+          <option value="student">Student</option>
+          <option value="parent">Parent</option>
+          <option value="teacher">Teacher</option>
+        </select>
 
         <button
           type="submit"
           disabled={loading}
           style={{
             padding: "14px",
-            backgroundColor: "#0af",
-            color: "black",
-            border: "none",
-            borderRadius: "6px",
-            fontWeight: "bold",
+            background: "#0af",
+            color: "#000",
+            borderRadius: "10px",
+            fontWeight: 700,
+            fontSize: "16px",
             cursor: loading ? "not-allowed" : "pointer",
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? "Logging in..." : "Login"}
+          {loading ? "Authenticating…" : "Login"}
         </button>
       </form>
+
+      {/* Animations */}
+      <style>{`
+        @keyframes twinkle {
+          from { opacity: 0.3; }
+          to { opacity: 1; }
+        }
+
+        @keyframes breathing {
+          0%, 100% {
+            box-shadow:
+              0 0 40px rgba(0,170,255,0.6),
+              inset 0 0 60px rgba(0,170,255,0.35);
+          }
+          50% {
+            box-shadow:
+              0 0 65px rgba(0,170,255,0.9),
+              inset 0 0 85px rgba(0,170,255,0.55);
+          }
+        }
+
+        .shake {
+          animation: shake 0.45s;
+        }
+
+        @keyframes shake {
+          0% { transform: translateX(0); }
+          25% { transform: translateX(-6px); }
+          50% { transform: translateX(6px); }
+          75% { transform: translateX(-4px); }
+          100% { transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: "12px",
-  borderRadius: "6px",
+  padding: "14px",
+  borderRadius: "10px",
   border: "1px solid #0af",
-  backgroundColor: "#111",
+  backgroundColor: "#0b0b0b",
   color: "white",
+  fontSize: "15px",
   outline: "none",
-  fontSize: "14px",
 };
 
 
