@@ -9,15 +9,16 @@ interface User {
   platform_id: string;
   name: string;
   role: string;
+  email: string;
+  password: string;
 }
 
 export default function LoginPage() {
   const router = useRouter();
-
+  const [email, setEmail] = useState("");
   const [platformId, setPlatformId] = useState("");
-  const [role, setRole] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
   const [stars, setStars] = useState<
     { x: number; y: number; size: number; opacity: number }[]
   >([]);
@@ -36,8 +37,8 @@ export default function LoginPage() {
   // ================= STARS ANIMATE =================
   useEffect(() => {
     const interval = setInterval(() => {
-      setStars(prev =>
-        prev.map(star => ({
+      setStars((prev) =>
+        prev.map((star) => ({
           ...star,
           x: (star.x + Math.random() * 0.3) % window.innerWidth,
           y: (star.y + Math.random() * 0.3) % window.innerHeight,
@@ -48,54 +49,64 @@ export default function LoginPage() {
         }))
       );
     }, 50);
-
     return () => clearInterval(interval);
   }, []);
 
   // ================= LOGIN =================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!platformId || !role) {
+    if (!email || !platformId || !password) {
       alert("Fill all fields");
       return;
     }
-
     setLoading(true);
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .eq("platform_id", platformId.trim())
-      .eq("role", role)
-      .single();
+    try {
+      // Check users table for all three fields
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("email", email.trim())
+        .eq("platform_id", platformId.trim())
+        .eq("password", password)
+        .single();
 
-    if (error || !data) {
+      if (userError || !userData) {
+        alert("Invalid email, platform ID, or password");
+        setLoading(false);
+        return;
+      }
+
+      const user = userData as User;
+
+      // ================= SAVE SESSION =================
+      localStorage.setItem("currentUserId", user.id);
+      localStorage.setItem("currentUserRole", user.role);
+      localStorage.setItem("currentUserPlatformId", user.platform_id);
+      localStorage.setItem("currentUserName", user.name);
+      localStorage.setItem("currentUserEmail", user.email);
+
+      router.push("/dashboard");
+    } catch (err) {
+      console.error(err);
+      alert("Login failed. Try again.");
+    } finally {
       setLoading(false);
-      alert("Invalid Platform ID or role");
-      return;
     }
-
-    const user = data as User;
-
-    // ================= SESSION =================
-    localStorage.setItem("currentUserId", user.id);
-    localStorage.setItem("currentUserRole", user.role);
-    localStorage.setItem("currentUserPlatformId", user.platform_id);
-    localStorage.setItem("currentUserName", user.name);
-
-    // ================= NAVIGATE =================
-    router.push("/dashboard");
   };
 
   return (
     <div
       style={{
         width: "100vw",
-        height: "100vh",
-        backgroundColor: "#3f51b5",
+        minHeight: "100vh",
+        backgroundColor: "#1a1a3d",
         position: "relative",
         overflow: "hidden",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        padding: "20px",
       }}
     >
       {/* Starfield */}
@@ -120,50 +131,53 @@ export default function LoginPage() {
       <form
         onSubmit={handleSubmit}
         style={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          backgroundColor: "rgba(0,0,0,0.8)",
+          width: "100%",
+          maxWidth: "380px",
+          backgroundColor: "rgba(0,0,0,0.85)",
           padding: "40px",
           borderRadius: "12px",
-          boxShadow: "0 0 20px rgba(0, 170, 255, 0.7)",
+          boxShadow: "0 0 30px rgba(0, 170, 255, 0.7)",
           display: "flex",
           flexDirection: "column",
-          gap: "15px",
-          width: "300px",
+          gap: "20px",
         }}
       >
-        <h2 style={{ color: "white", textAlign: "center" }}>Login</h2>
+        <h2 style={{ color: "white", textAlign: "center", marginBottom: "10px" }}>
+          Login
+        </h2>
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={inputStyle}
+          required
+        />
 
         <input
           type="text"
           placeholder="Platform ID"
           value={platformId}
-          onChange={e => setPlatformId(e.target.value)}
+          onChange={(e) => setPlatformId(e.target.value)}
           style={inputStyle}
           required
         />
 
-        <select
-          value={role}
-          onChange={e => setRole(e.target.value)}
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
           style={inputStyle}
           required
-        >
-          <option value="" disabled hidden>
-            Role
-          </option>
-          <option value="student">Student</option>
-          <option value="parent">Parent</option>
-          <option value="teacher">Teacher</option>
-        </select>
+        />
 
         <button
           type="submit"
           disabled={loading}
           style={{
-            padding: "12px",
+            padding: "14px",
             backgroundColor: "#0af",
             color: "black",
             border: "none",
@@ -173,7 +187,7 @@ export default function LoginPage() {
             opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? "Checking..." : "Login"}
+          {loading ? "Logging in..." : "Login"}
         </button>
       </form>
     </div>
@@ -181,12 +195,14 @@ export default function LoginPage() {
 }
 
 const inputStyle: React.CSSProperties = {
-  padding: "10px",
+  padding: "12px",
   borderRadius: "6px",
   border: "1px solid #0af",
   backgroundColor: "#111",
   color: "white",
   outline: "none",
+  fontSize: "14px",
 };
+
 
 
