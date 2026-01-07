@@ -59,6 +59,18 @@ export default function Messages({ onBack }: MessagesProps) {
 
   // ================= REALTIME =================
   useEffect(() => {
+    let pollingInterval: number;
+
+    const startPolling = () => {
+      pollingInterval = window.setInterval(async () => {
+        const { data } = await supabase
+          .from("messages")
+          .select("*")
+          .order("created_at", { ascending: true });
+        if (data) setMessages(data as MessageRow[]);
+      }, 2000);
+    };
+
     const channel = supabase
       .channel("messages-realtime")
       .on(
@@ -73,17 +85,22 @@ export default function Messages({ onBack }: MessagesProps) {
             );
             if (index !== -1) {
               const newArr = [...prev];
-              newArr[index] = incoming; // replace temp with real message
+              newArr[index] = incoming;
               return newArr;
             }
-            return [...prev, incoming]; // append new message
+            if (!prev.some((m) => m.id === incoming.id)) return [...prev, incoming];
+            return prev;
           });
         }
       )
       .subscribe();
 
+    // Start fallback polling
+    startPolling();
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollingInterval);
     };
   }, []);
 
@@ -105,7 +122,6 @@ export default function Messages({ onBack }: MessagesProps) {
     setMessages((prev) => [...prev, optimisticMessage]);
     setInput("");
 
-    // Insert into DB with client_id
     await supabase.from("messages").insert({
       text: optimisticMessage.text,
       sender_id: optimisticMessage.sender_id,
@@ -156,7 +172,16 @@ export default function Messages({ onBack }: MessagesProps) {
   };
 
   return (
-    <div style={{ height: "100vh", background: "black", color: "white", display: "flex", flexDirection: "column", position: "relative" }}>
+    <div
+      style={{
+        height: "100vh",
+        background: "black",
+        color: "white",
+        display: "flex",
+        flexDirection: "column",
+        position: "relative",
+      }}
+    >
       {/* Starfield */}
       {stars.map((s, i) => (
         <div
@@ -193,14 +218,31 @@ export default function Messages({ onBack }: MessagesProps) {
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
-        {messages.length === 0 && <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>}
+      <div
+        style={{
+          flex: 1,
+          padding: 20,
+          overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        {messages.length === 0 && (
+          <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>
+        )}
         {messages.map((msg) => {
           const sender = getSender(msg.sender_id);
           const isMe = msg.sender_id === currentUserId;
 
           return (
-            <div key={msg.id} style={{ alignSelf: isMe ? "flex-end" : "flex-start", maxWidth: "75%" }}>
+            <div
+              key={msg.id}
+              style={{
+                alignSelf: isMe ? "flex-end" : "flex-start",
+                maxWidth: "75%",
+              }}
+            >
               {sender && (
                 <div style={{ fontSize: 12, opacity: 0.7 }}>
                   {sender.name} ({sender.role})
@@ -226,7 +268,14 @@ export default function Messages({ onBack }: MessagesProps) {
       </div>
 
       {/* Input */}
-      <div style={{ padding: 15, borderTop: "1px solid #222", display: "flex", gap: 10 }}>
+      <div
+        style={{
+          padding: 15,
+          borderTop: "1px solid #222",
+          display: "flex",
+          gap: 10,
+        }}
+      >
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -256,6 +305,9 @@ export default function Messages({ onBack }: MessagesProps) {
     </div>
   );
 }
+
+
+
 
 
 
