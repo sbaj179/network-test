@@ -53,7 +53,6 @@ export default function Messages({ onBack }: MessagesProps) {
         .from("messages")
         .select("*")
         .order("created_at", { ascending: true });
-
       if (data) setMessages(data as MessageRow[]);
     };
     fetchMessages();
@@ -66,18 +65,20 @@ export default function Messages({ onBack }: MessagesProps) {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "messages" },
-        (payload) => {
-          const incoming = payload.new as MessageRow;
+        (payload: { new: MessageRow }) => {
+          const incoming = payload.new;
 
           setMessages((prev) => {
+            // Check if message already exists (by DB id or client_id)
             if (
               prev.some(
-                (m) =>
-                  m.id === incoming.id ||
-                  (m.client_id && m.client_id === incoming.client_id)
+                (m) => m.id === incoming.id || (incoming.client_id && m.client_id === incoming.client_id)
               )
             ) {
-              return prev;
+              // Replace optimistic message with confirmed DB message
+              return prev.map((m) =>
+                incoming.client_id && m.client_id === incoming.client_id ? incoming : m
+              );
             }
             return [...prev, incoming];
           });
@@ -94,8 +95,7 @@ export default function Messages({ onBack }: MessagesProps) {
   const sendMessage = async () => {
     if (!input.trim() || !currentUserId) return;
 
-    const clientId = crypto.randomUUID();
-
+    const clientId = uuidv4();
     const optimisticMessage: MessageRow = {
       id: clientId,
       client_id: clientId,
@@ -104,15 +104,20 @@ export default function Messages({ onBack }: MessagesProps) {
       created_at: new Date().toISOString(),
     };
 
-    // ✅ WhatsApp-style instant UI
+    // ✅ Show instantly
     setMessages((prev) => [...prev, optimisticMessage]);
     setInput("");
 
-    await supabase.from("messages").insert({
-      text: optimisticMessage.text,
-      sender_id: optimisticMessage.sender_id,
-      client_id: clientId,
-    });
+    try {
+      await supabase.from("messages").insert({
+        text: optimisticMessage.text,
+        sender_id: optimisticMessage.sender_id,
+        client_id: clientId,
+      });
+    } catch (err: any) {
+      console.error("Send message error:", err.message);
+      alert("Failed to send message");
+    }
   };
 
   const getSender = (id: string) => users.find((u) => u.id === id);
@@ -160,6 +165,7 @@ export default function Messages({ onBack }: MessagesProps) {
 
   return (
     <div style={{ height: "100vh", background: "black", color: "white", display: "flex", flexDirection: "column", position: "relative" }}>
+      {/* Starfield */}
       {stars.map((s, i) => (
         <div
           key={i}
@@ -185,15 +191,20 @@ export default function Messages({ onBack }: MessagesProps) {
         }
       `}</style>
 
+      {/* Back */}
       <div style={{ position: "absolute", top: 20, left: 20, zIndex: 10 }}>
         <BackArrow onBack={onBack} />
       </div>
 
+      {/* Header */}
       <div style={{ paddingTop: 70, textAlign: "center" }}>
         <h2>Accountability Chat</h2>
       </div>
 
+      {/* Messages */}
       <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
+        {messages.length === 0 && <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>}
+
         {messages.map((msg) => {
           const sender = getSender(msg.sender_id);
           const isMe = msg.sender_id === currentUserId;
@@ -224,6 +235,7 @@ export default function Messages({ onBack }: MessagesProps) {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input */}
       <div style={{ padding: 15, borderTop: "1px solid #222", display: "flex", gap: 10 }}>
         <input
           value={input}
@@ -254,6 +266,7 @@ export default function Messages({ onBack }: MessagesProps) {
     </div>
   );
 }
+
 
 
 
