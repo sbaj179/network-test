@@ -3,7 +3,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import BackArrow from "../components/back-arrow/BackArrow";
 import { supabase } from "../../lib/supabaseClient";
-import { v4 as uuidv4 } from "uuid";
 
 interface MessagesProps {
   onBack: () => void;
@@ -69,18 +68,15 @@ export default function Messages({ onBack }: MessagesProps) {
           const incoming = payload.new;
 
           setMessages((prev) => {
-            // Check if message already exists (by DB id or client_id)
-            if (
-              prev.some(
-                (m) => m.id === incoming.id || (incoming.client_id && m.client_id === incoming.client_id)
-              )
-            ) {
-              // Replace optimistic message with confirmed DB message
-              return prev.map((m) =>
-                incoming.client_id && m.client_id === incoming.client_id ? incoming : m
-              );
+            const index = prev.findIndex(
+              (m) => m.client_id && m.client_id === incoming.client_id
+            );
+            if (index !== -1) {
+              const newArr = [...prev];
+              newArr[index] = incoming; // replace temp with real message
+              return newArr;
             }
-            return [...prev, incoming];
+            return [...prev, incoming]; // append new message
           });
         }
       )
@@ -95,7 +91,8 @@ export default function Messages({ onBack }: MessagesProps) {
   const sendMessage = async () => {
     if (!input.trim() || !currentUserId) return;
 
-    const clientId = uuidv4();
+    const clientId = crypto.randomUUID();
+
     const optimisticMessage: MessageRow = {
       id: clientId,
       client_id: clientId,
@@ -104,20 +101,16 @@ export default function Messages({ onBack }: MessagesProps) {
       created_at: new Date().toISOString(),
     };
 
-    // ✅ Show instantly
+    // Show message instantly
     setMessages((prev) => [...prev, optimisticMessage]);
     setInput("");
 
-    try {
-      await supabase.from("messages").insert({
-        text: optimisticMessage.text,
-        sender_id: optimisticMessage.sender_id,
-        client_id: clientId,
-      });
-    } catch (err: any) {
-      console.error("Send message error:", err.message);
-      alert("Failed to send message");
-    }
+    // Insert into DB with client_id
+    await supabase.from("messages").insert({
+      text: optimisticMessage.text,
+      sender_id: optimisticMessage.sender_id,
+      client_id: clientId,
+    });
   };
 
   const getSender = (id: string) => users.find((u) => u.id === id);
@@ -132,7 +125,6 @@ export default function Messages({ onBack }: MessagesProps) {
   const [stars, setStars] = useState<
     { left: number; top: number; size: number; opacity: number; duration: number }[]
   >([]);
-
   useEffect(() => {
     setStars(
       Array.from({ length: starCount }, () => ({
@@ -183,7 +175,6 @@ export default function Messages({ onBack }: MessagesProps) {
           }}
         />
       ))}
-
       <style>{`
         @keyframes twinkle {
           from { opacity: 0.3; }
@@ -191,12 +182,12 @@ export default function Messages({ onBack }: MessagesProps) {
         }
       `}</style>
 
-      {/* Back */}
+      {/* Back Arrow */}
       <div style={{ position: "absolute", top: 20, left: 20, zIndex: 10 }}>
         <BackArrow onBack={onBack} />
       </div>
 
-      {/* Header */}
+      {/* Title */}
       <div style={{ paddingTop: 70, textAlign: "center" }}>
         <h2>Accountability Chat</h2>
       </div>
@@ -204,7 +195,6 @@ export default function Messages({ onBack }: MessagesProps) {
       {/* Messages */}
       <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
         {messages.length === 0 && <p style={{ opacity: 0.5, textAlign: "center" }}>No messages yet.</p>}
-
         {messages.map((msg) => {
           const sender = getSender(msg.sender_id);
           const isMe = msg.sender_id === currentUserId;
@@ -266,6 +256,7 @@ export default function Messages({ onBack }: MessagesProps) {
     </div>
   );
 }
+
 
 
 
